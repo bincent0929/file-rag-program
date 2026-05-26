@@ -17,7 +17,6 @@ from langchain_community.document_loaders import (
     Docx2txtLoader,
     TextLoader,
     CSVLoader,
-    UnstructuredMarkdownLoader,
 )
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
@@ -30,7 +29,7 @@ from langchain_core.runnables import RunnablePassthrough, RunnableParallel
 
 OLLAMA_BASE_URL   = "http://vrllm-server.taileedec.ts.net:11434"
 EMBEDDING_MODEL   = "mxbai-embed-large"   # small, fast, runs locally via Ollama
-LLM_MODEL         = "llama3"             # change to mistral, gemma2, etc.
+LLM_MODEL         = "mistral:7B"             # change to mistral, gemma2, etc.
 CHROMA_DB_PATH    = "./chroma_db"        # where vectors are persisted on disk
 CHUNK_SIZE        = 1000                 # characters per chunk
 CHUNK_OVERLAP     = 150                  # overlap between chunks
@@ -41,7 +40,7 @@ LOADER_MAP = {
     ".docx": Docx2txtLoader,
     ".txt":  TextLoader,
     ".csv":  CSVLoader,
-    ".md":   UnstructuredMarkdownLoader,
+    ".md":   TextLoader,
 }
 
 # ── Prompt ────────────────────────────────────────────────────────────────────
