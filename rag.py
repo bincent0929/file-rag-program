@@ -29,10 +29,10 @@ OLLAMA_BASE_URL   = "http://vrllm-server.taileedec.ts.net:11434"
 EMBEDDING_MODEL   = "mxbai-embed-large"   # small, fast, runs locally via Ollama
 LLM_MODEL         = "mistral:7B"             # change to mistral, gemma2, etc.
 CHROMA_DB_PATH    = "./chroma_db"        # where vectors are persisted on disk
-CHUNK_SIZE        = 1000                 # characters per chunk
+CHUNK_SIZE        = 800                  # characters per chunk — mxbai-embed-large has 512 token limit
 CHUNK_OVERLAP     = 150                  # overlap between chunks
 
-SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".txt", ".csv", ".md"}
+SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".txt", ".csv", ".md", ".html", ".rmd", ".qmd"}
 
 # ── Prompt ────────────────────────────────────────────────────────────────────
 
@@ -77,8 +77,13 @@ def load_document(file_path: Path) -> list[Document]:
     if ext == ".docx":
         return [Document(page_content=docx2txt.process(src), metadata={"source": src})]
 
-    if ext in (".txt", ".md"):
+    if ext in (".txt", ".md", ".rmd", ".qmd"):
         return [Document(page_content=file_path.read_text(encoding="utf-8", errors="ignore"), metadata={"source": src})]
+
+    if ext == ".html":
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(file_path.read_bytes(), "html.parser")
+        return [Document(page_content=soup.get_text(separator="\n"), metadata={"source": src})]
 
     if ext == ".csv":
         with open(src, newline="", encoding="utf-8", errors="ignore") as f:
