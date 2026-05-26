@@ -9,21 +9,19 @@ Usage:
     python rag.py clear                 # wipe the vector DB and start fresh
 """
 
+import csv
 import sys
 from pathlib import Path
 
-from langchain_community.document_loaders import (
-    PyPDFLoader,
-    Docx2txtLoader,
-    TextLoader,
-    CSVLoader,
-)
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+import docx2txt
+import pypdf
 from langchain_chroma import Chroma
-from langchain_ollama import OllamaEmbeddings, OllamaLLM
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.documents import Document
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough, RunnableParallel
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnableParallel, RunnablePassthrough
+from langchain_ollama import OllamaEmbeddings, OllamaLLM
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
@@ -34,14 +32,7 @@ CHROMA_DB_PATH    = "./chroma_db"        # where vectors are persisted on disk
 CHUNK_SIZE        = 1000                 # characters per chunk
 CHUNK_OVERLAP     = 150                  # overlap between chunks
 
-# File extension → loader mapping
-LOADER_MAP = {
-    ".pdf":  PyPDFLoader,
-    ".docx": Docx2txtLoader,
-    ".txt":  TextLoader,
-    ".csv":  CSVLoader,
-    ".md":   TextLoader,
-}
+SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".txt", ".csv", ".md"}
 
 # ── Prompt ────────────────────────────────────────────────────────────────────
 
@@ -65,16 +56,34 @@ def get_vectorstore():
     )
 
 
-def load_document(file_path: Path):
-    """Pick the right loader based on file extension."""
+def load_document(file_path: Path) -> list[Document]:
     ext = file_path.suffix.lower()
-    loader_cls = LOADER_MAP.get(ext)
-    if not loader_cls:
+    src = str(file_path)
+
+    if ext not in SUPPORTED_EXTENSIONS:
         print(f"  ⚠️  Skipping unsupported file type: {file_path.name}")
         return []
+
     print(f"  📄 Loading: {file_path.name}")
-    loader = loader_cls(str(file_path))
-    return loader.load()
+
+    if ext == ".pdf":
+        reader = pypdf.PdfReader(src)
+        return [
+            Document(page_content=page.extract_text() or "", metadata={"source": src, "page": i})
+            for i, page in enumerate(reader.pages)
+            if (page.extract_text() or "").strip()
+        ]
+
+    if ext == ".docx":
+        return [Document(page_content=docx2txt.process(src), metadata={"source": src})]
+
+    if ext in (".txt", ".md"):
+        return [Document(page_content=file_path.read_text(encoding="utf-8", errors="ignore"), metadata={"source": src})]
+
+    if ext == ".csv":
+        with open(src, newline="", encoding="utf-8", errors="ignore") as f:
+            rows = [" | ".join(f"{k}: {v}" for k, v in row.items()) for row in csv.DictReader(f)]
+        return [Document(page_content="\n".join(rows), metadata={"source": src})]
 
 
 # ── Commands ──────────────────────────────────────────────────────────────────

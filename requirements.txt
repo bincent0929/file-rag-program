@@ -1,5 +1,4 @@
-langchain
-langchain-community
+langchain-core
 langchain-chroma
 langchain-ollama
 langchain-text-splitters
@@ -7,7 +6,6 @@ langchain-text-splitters
 # Document loaders
 pypdf
 docx2txt
-unstructured
 
 # Vector store
 chromadb
