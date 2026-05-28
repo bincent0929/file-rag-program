@@ -10,3 +10,6 @@ beautifulsoup4
 
 # Vector store
 chromadb
+
+# GUI
+gradio
